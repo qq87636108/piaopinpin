@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>使用条款 - 票拼拼</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',200:'#bfdbfe',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8'}}}}}</script>
+  <style>body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;background:#f8fafc;}</style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <a href="/" class="flex items-center space-x-3">
+      <div class="bg-brand-600 text-white p-2 rounded-lg flex items-center justify-center w-10 h-10 shadow-sm text-lg font-bold">拼</div>
+      <div>
+        <h1 class="text-lg font-bold text-slate-900 leading-tight">票拼拼</h1>
+        <p class="text-xs text-slate-500">发票拼一拼，A4 打印更省纸。</p>
+      </div>
+    </a>
+    <nav class="flex items-center gap-4 text-sm text-slate-600">
+      <a href="/" class="hover:text-brand-600 transition-colors">首页</a>
+      <a href="/about.html" class="hover:text-brand-600 transition-colors">关于我们</a>
+      <a href="/privacy.html" class="hover:text-brand-600 transition-colors">隐私政策</a>
+      <a href="/contact.html" class="hover:text-brand-600 transition-colors">联系我们</a>
+    </nav>
+  </div>
+</header>
+
+  <main class="flex-1 max-w-3xl w-full mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold text-slate-800 mb-6">使用条款</h1>
+    <div class="prose prose-slate max-w-none text-sm leading-relaxed text-slate-600 space-y-4">
+      <p><strong>最后更新：</strong>2026年9月27日</p>
+
+      <h2 class="text-lg font-semibold text-slate-700 mt-6">一、服务说明</h2>
+      <p>票拼拼（piaopinpin）是一款免费的电子发票拼版打印工具，帮助用户将多张电子发票拼版到 A4 纸上打印。本工具在浏览器端运行，无需安装，无需注册。</p>
+
+      <h2 class="text-lg font-semibold text-slate-700 mt-6">二、使用条件</h2>
+      <p>使用本工具即表示您同意以下条款：</p>
+      <ul class="list-disc pl-5 space-y-1">
+        <li>本工具仅供个人、合法用途使用</li>
+        <li>不得利用本工具从事任何违法活动</li>
+        <li>不得对本工具进行逆向工程、破解或恶意攻击</li>
+      </ul>
+
+      <h2 class="text-lg font-semibold text-slate-700 mt-6">三、免责声明</h2>
+      <ul class="list-disc pl-5 space-y-2">
+        <li><strong>无担保</strong>：本工具按"现状"提供，不作任何明示或暗示的担保</li>
+        <li><strong>准确性</strong>：本工具不保证发票解析和拼版结果的绝对准确性，最终打印效果请以实际为准</li>
+        <li><strong>数据安全</strong>：虽然本工具不上传文件，但请用户自行妥善保管原始发票文件</li>
+        <li><strong>第三方服务</strong>：本工具使用第三方广告服务（Google AdSense），广告内容由第三方提供，与本工具无关</li>
+      </ul>
+
+      <h2 class="text-lg font-semibold text-slate-700 mt-6">四、知识产权</h2>
+      <p>本工具的代码、设计和内容受著作权法保护。本工具使用了以下开源组件：</p>
+      <ul class="list-disc pl-5 space-y-1">
+        <li>PDF.js（Mozilla Public License）</li>
+        <li>ofdjs（Apache License 2.0）</li>
+        <li>Tailwind CSS（MIT License）</li>
+      </ul>
+
+      <h2 class="text-lg font-semibold text-slate-700 mt-6">五、条款更新</h2>
+      <p>我们保留随时修改本条款的权利。修改后的条款将在本页面发布，并更新顶部的"最后更新"日期。继续使用本工具即表示您同意修改后的条款。</p>
+
+      <h2 class="text-lg font-semibold text-slate-700 mt-6">六、联系方式</h2>
+      <p>如有疑问，请通过 <a href="/contact.html" class="text-brand-600 hover:underline">联系我们</a> 页面与我们取得联系。</p>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white py-4">
+  <div class="max-w-7xl mx-auto px-4 text-xs text-slate-400 flex flex-wrap items-center justify-between gap-2">
+    <span>© 票拼拼 piaopinpin · 发票文件不离开你的电脑</span>
+    <nav class="flex items-center gap-3">
+      <a href="https://www.daogong.cc" target="_blank" rel="noopener" class="text-brand-600 hover:text-brand-700 font-medium">返回主站 →</a>
+      <span class="text-slate-300">|</span>
+      <a href="/privacy.html" class="hover:text-brand-600">隐私政策</a>
+      <a href="/about.html" class="hover:text-brand-600">关于我们</a>
+      <a href="/terms.html" class="hover:text-brand-600">使用条款</a>
+      <a href="/contact.html" class="hover:text-brand-600">联系我们</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

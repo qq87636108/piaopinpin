@@ -5,6 +5,7 @@ import { renderPreview, buildPrintPages } from '../core/preview.js';
 import { initAds } from '../core/ads.js';
 
 const $ = id => document.getElementById(id);
+window.__pp = { state, processFiles }; // 调试/自动化验证钩子
 
 // ---------- 上传队列（单文件失败不阻塞，需求书 §5.1） ----------
 async function processFiles(files) {
@@ -83,31 +84,6 @@ function renderLayoutBtns() {
 
 function renderAll() { renderList(); renderLayoutBtns(); renderPreview(); }
 
-// ---------- 示例数据（自造假票 SVG，绝不使用真实票面信息） ----------
-function demoData() {
-  const mk = (t, no, dt) => {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380">
-      <rect width="600" height="380" fill="#fff" stroke="#3b82f6" stroke-width="4" rx="8"/>
-      <text x="300" y="60" font-size="24" font-weight="bold" fill="#b91c1c" text-anchor="middle">电子发票（增值税专用发票）</text>
-      <text x="40" y="110" font-size="15" fill="#334155">发票号码：${no}</text>
-      <text x="330" y="110" font-size="15" fill="#334155">开票日期：${dt}</text>
-      <text x="40" y="150" font-size="15" fill="#334155">购买方：示例科技有限公司</text>
-      <text x="40" y="180" font-size="15" fill="#334155">销售方：${esc(t)}</text>
-      <rect x="40" y="210" width="520" height="90" fill="#f8fafc" stroke="#e2e8f0"/>
-      <text x="60" y="265" font-size="26" font-weight="bold" fill="#2563eb">（示例数据 · 非真实发票）</text>
-    </svg>`;
-    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-  };
-  const rows = [['示例餐饮服务公司','245120000000100001','2026-09-12'],['示例云计算服务公司','245120000000100002','2026-09-15'],['示例出行平台','245120000000100003','2026-09-18'],['示例办公用品公司','245120000000100004','2026-09-20'],['示例酒店管理有限公司','245120000000100005','2026-09-22']];
-  state.invoices = rows.map(([t, no, dt], i) => ({
-    ...newInvoice({ name: `示例发票${i + 1}.svg`, type: 'image/svg+xml', size: 0 }),
-    fileName: `示例-${t}.svg`, fileType: 'image', status: 'parsed',
-    previewUrl: mk(t, no, dt), meta: { invoiceNo: no, issueDate: dt }, file: null,
-  }));
-  state.currentPreviewPage = 1;
-  renderAll();
-}
-
 // ---------- 打印 ----------
 function doPrint() {
   const parsed = state.invoices.filter(i => i.status === 'parsed');
@@ -162,7 +138,6 @@ $('gap-input').addEventListener('input', e => { state.settings.gap = +e.target.v
 $('show-cutlines').addEventListener('change', e => { state.settings.showCutLines = e.target.checked; renderPreview(); });
 $('btn-prev').addEventListener('click', () => { if (state.currentPreviewPage > 1) { state.currentPreviewPage--; renderPreview(); } });
 $('btn-next').addEventListener('click', () => { if (state.currentPreviewPage < totalPages()) { state.currentPreviewPage++; renderPreview(); } });
-$('btn-demo').addEventListener('click', demoData);
 $('btn-clear').addEventListener('click', () => { state.invoices = []; state.currentPreviewPage = 1; renderAll(); });
 $('btn-print').addEventListener('click', doPrint);
 

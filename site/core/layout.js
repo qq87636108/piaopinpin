@@ -7,7 +7,7 @@ export function pageSize() {
     ? { w: 297, h: 210 } : { w: 210, h: 297 };
 }
 
-// 网格：1张=1x1；2张=1列2行；3张=1列3行；4张=2x2
+// 网格：1张=1x1；2张=1列2行；3张=1列3行；4张=2x2（需求书 5.5 定稿）
 function grid(perPage) {
   if (perPage === 2) return { cols: 1, rows: 2 };
   if (perPage === 3) return { cols: 1, rows: 3 };
@@ -42,6 +42,27 @@ export function computePages() {
     pages.push({ pageNo: p + 1, slots });
   }
   return pages;
+}
+
+// [票拼拼补丁] 裁切线：在票与票之间画虚线分割线（不是每张票描边框）
+// 2张/页=1条居中横线；3张/页=2条横线（两两之间）；4张/页=1横+1竖（十字）；1张=无
+export function cutLines(page) {
+  const { w, h } = pageSize();
+  const { settings } = state;
+  const m = settings.margin, gap = settings.gap, per = settings.perPage;
+  const { cols, rows } = grid(per);
+  const cellW = (w - 2 * m - (cols - 1) * gap) / cols;
+  const cellH = (h - 2 * m - (rows - 1) * gap) / rows;
+  const lines = { h: [], v: [] }; // h=横向分割线, v=纵向分割线
+  for (let r = 1; r < rows; r++) {
+    const y = m + r * cellH + (r - 1) * gap + gap / 2;
+    lines.h.push(y);
+  }
+  for (let c = 1; c < cols; c++) {
+    const x = m + c * cellW + (c - 1) * gap + gap / 2;
+    lines.v.push(x);
+  }
+  return lines;
 }
 
 // 图在槽位内 contain 居中后的实际矩形（导出 PDF / 调试用）

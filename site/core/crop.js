@@ -41,6 +41,7 @@ export function cropCanvas(sourceCanvas, rect) {
 }
 
 // 成品图统一压 JPEG（白底）控制体积：版面/打印/导出共用这一张
+// ⚠️ 必须无条件铺白底：OFD 渲染画布是透明的，不铺白 → JPEG 透明区变黑（真票踩坑）
 export function canvasToJpegDataUrl(canvas, maxSide = 2200, quality = 0.92) {
   let c = canvas;
   const scale = Math.min(1, maxSide / Math.max(canvas.width, canvas.height));
@@ -52,5 +53,10 @@ export function canvasToJpegDataUrl(canvas, maxSide = 2200, quality = 0.92) {
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
     ctx.drawImage(canvas, 0, 0, c.width, c.height);
   }
-  return c.toDataURL('image/jpeg', quality);
+  const out = document.createElement('canvas');
+  out.width = c.width; out.height = c.height;
+  const octx = out.getContext('2d');
+  octx.fillStyle = '#fff'; octx.fillRect(0, 0, out.width, out.height);
+  octx.drawImage(c, 0, 0);
+  return out.toDataURL('image/jpeg', quality);
 }

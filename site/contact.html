@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>联系我们 - 票拼拼</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',200:'#bfdbfe',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8'}}}}}</script>
+  <style>body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;background:#f8fafc;}</style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <a href="/" class="flex items-center space-x-3">
+      <div class="bg-brand-600 text-white p-2 rounded-lg flex items-center justify-center w-10 h-10 shadow-sm text-lg font-bold">拼</div>
+      <div>
+        <h1 class="text-lg font-bold text-slate-900 leading-tight">票拼拼</h1>
+        <p class="text-xs text-slate-500">发票拼一拼，A4 打印更省纸。</p>
+      </div>
+    </a>
+    <nav class="flex items-center gap-4 text-sm text-slate-600">
+      <a href="/" class="hover:text-brand-600 transition-colors">首页</a>
+      <a href="/about.html" class="hover:text-brand-600 transition-colors">关于我们</a>
+      <a href="/privacy.html" class="hover:text-brand-600 transition-colors">隐私政策</a>
+      <a href="/contact.html" class="hover:text-brand-600 transition-colors">联系我们</a>
+    </nav>
+  </div>
+</header>
+
+  <main class="flex-1 max-w-3xl w-full mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold text-slate-800 mb-6">联系我们</h1>
+    <div class="prose prose-slate max-w-none text-sm leading-relaxed text-slate-600 space-y-4">
+
+      <h2 class="text-lg font-semibold text-slate-700 mt-6">问题反馈</h2>
+      <p>如果您在使用票拼拼时遇到问题，或有功能建议，欢迎通过以下方式联系我们：</p>
+      <ul class="list-disc pl-5 space-y-2">
+        <li><strong>邮箱</strong>：<a href="mailto:admin@daogong.cc" class="text-brand-600 hover:underline">admin@daogong.cc</a></li>
+        <li><strong>GitHub Issues</strong>：<a href="https://github.com/daogong/piaopinpin/issues" target="_blank" rel="noopener" class="text-brand-600 hover:underline">提交 Issue</a></li>
+      </ul>
+
+      <h2 class="text-lg font-semibold text-slate-700 mt-6">合作洽谈</h2>
+      <p>如有商务合作需求，请通过邮箱 <a href="mailto:admin@daogong.cc" class="text-brand-600 hover:underline">admin@daogong.cc</a> 联系我们。</p>
+
+      <h2 class="text-lg font-semibold text-slate-700 mt-6">法律声明</h2>
+      <p>本工具仅供个人学习和办公使用。如发现任何问题，请联系我们，我们将及时处理。</p>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white py-4">
+  <div class="max-w-7xl mx-auto px-4 text-xs text-slate-400 flex flex-wrap items-center justify-between gap-2">
+    <span>© 票拼拼 piaopinpin · 发票文件不离开你的电脑</span>
+    <nav class="flex items-center gap-3">
+      <a href="https://www.daogong.cc" target="_blank" rel="noopener" class="text-brand-600 hover:text-brand-700 font-medium">返回主站 →</a>
+      <span class="text-slate-300">|</span>
+      <a href="/privacy.html" class="hover:text-brand-600">隐私政策</a>
+      <a href="/about.html" class="hover:text-brand-600">关于我们</a>
+      <a href="/terms.html" class="hover:text-brand-600">使用条款</a>
+      <a href="/contact.html" class="hover:text-brand-600">联系我们</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

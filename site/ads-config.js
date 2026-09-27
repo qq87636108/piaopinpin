@@ -4,6 +4,6 @@ const ADS_CONFIG = {
   adClient: "ca-pub-XXXXXXXXXXXXXXXX",   // 待填：统一 AdSense 账号 pub-id
   adSlot: "",                            // 待填：本站左栏广告单元 ID
   adFormat: "auto",
-  debug: false                           // true=占位区显示诊断
+  debug: true                            // 测试机阶段=true 显示广告位占框；生产默认关
 };
 if (typeof window !== 'undefined') window.ADS_CONFIG = ADS_CONFIG;

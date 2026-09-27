@@ -1,6 +1,6 @@
 // 预览渲染：把 layout.js 坐标表画到屏幕 A4（1mm = PX_PER_MM px）
 import { state, totalPages } from './state.js';
-import { computePages, pageSize } from './layout.js';
+import { computePages, pageSize, cutLines } from './layout.js';
 
 const PX_PER_MM = 2.6; // 595px/210mm ≈ 2.83 的近似，屏幕观感优先
 
@@ -25,7 +25,7 @@ export function renderPreview() {
     canvas.innerHTML = `
       <div class="w-full h-full flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-200 rounded-xl">
         <p class="text-base font-medium text-slate-400">A4 页面拼版预览区</p>
-        <p class="text-xs text-slate-400 mt-1">上传发票或点击「载入示例数据」开始拼版</p>
+        <p class="text-xs text-slate-400 mt-1">上传发票开始拼版</p>
       </div>`;
     return;
   }
@@ -33,17 +33,26 @@ export function renderPreview() {
   const pages = computePages();
   const page = pages[state.currentPreviewPage - 1];
   const S = PX_PER_MM;
+  // [票拼拼补丁] 裁切线：从 cutLines() 获取分割线坐标，画全页虚线（不是每张票描边框）
+  const cl = cutLines(page);
   let html = '';
   for (const slot of page.slots) {
     const inv = slot.invoice;
-    const cut = settings.showCutLines ? 'slot-cut' : '';
     const inner = inv.previewHtml
       ? `<div class="absolute inset-0 overflow-hidden bg-white"><div class="origin-top-left" style="transform:scale(${(slot.w * S) / 620});width:620px">${inv.previewHtml}</div></div>`
       : `<img src="${inv.previewUrl}" class="max-w-full max-h-full object-contain" alt="">`;
     html += `
-      <div class="absolute bg-white ${cut}" style="left:${slot.x * S}px;top:${slot.y * S}px;width:${slot.w * S}px;height:${slot.h * S}px">
+      <div class="absolute bg-white" style="left:${slot.x * S}px;top:${slot.y * S}px;width:${slot.w * S}px;height:${slot.h * S}px">
         <div class="w-full h-full flex items-center justify-center overflow-hidden p-1">${inner}</div>
       </div>`;
+  }
+  if (state.settings.showCutLines) {
+    for (const y of cl.h) {
+      html += `<div class="absolute" style="left:0;right:0;top:${y * S}px;border-top:1px dashed #94a3b8;"></div>`;
+    }
+    for (const x of cl.v) {
+      html += `<div class="absolute" style="top:0;bottom:0;left:${x * S}px;border-left:1px dashed #94a3b8;"></div>`;
+    }
   }
   canvas.innerHTML = html;
 }
@@ -59,11 +68,20 @@ export function buildPrintPages() {
     let html = '';
     for (const slot of page.slots) {
       const inv = slot.invoice;
-      const cut = state.settings.showCutLines ? 'print-cut' : '';
       const inner = inv.previewHtml
         ? `<div class="print-xml-card-wrap">${inv.previewHtml}</div>`
         : `<img src="${inv.previewUrl}" class="print-img" alt="">`;
-      html += `<div class="print-slot ${cut}" style="left:${slot.x}mm;top:${slot.y}mm;width:${slot.w}mm;height:${slot.h}mm">${inner}</div>`;
+      html += `<div class="print-slot" style="left:${slot.x}mm;top:${slot.y}mm;width:${slot.w}mm;height:${slot.h}mm">${inner}</div>`;
+    }
+    // [票拼拼补丁] 打印时裁切线（与预览同源）
+    if (state.settings.showCutLines) {
+      const cl = cutLines(page);
+      for (const y of cl.h) {
+        html += `<div class="print-cut-h" style="top:${y}mm"></div>`;
+      }
+      for (const x of cl.v) {
+        html += `<div class="print-cut-v" style="left:${x}mm"></div>`;
+      }
     }
     div.innerHTML = html;
     area.appendChild(div);
