@@ -6,6 +6,12 @@
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat&logo=tailwindcss&logoColor=white)
 
+## 🎯 在线预览
+
+**👉 [点击体验票拼拼](https://piaopinpin.daogong.cc)** — 无需安装，打开即用！
+
+> 📱 支持手机和电脑浏览器 · 📄 文件全程本地处理，不上传服务器
+
 ## ✨ 功能特点
 
 - **纯浏览器处理**：所有文件解析、裁切、拼版均在浏览器本地完成，发票文件不上传服务器
