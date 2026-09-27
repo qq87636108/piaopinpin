@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电子发票自动拼版与打印工具</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PDF.js library for PDF thumbnail rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Sortable.js for drag and drop sorting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f8fafc;
+        }
+
+        /* A4 Canvas Ratio Aspect (210mm x 297mm approx 1 : 1.414) */
+        .a4-page {
+            width: 100%;
+            max-width: 595px; /* Standard screen pixel equivalent for A4 ratio */
+            height: 842px;
+            background: white;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            position: relative;
+            box-sizing: border-box;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        /* Print Media Styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: none !important;
+                box-shadow: none !important;
+            }
+            .a4-page {
+                width: 210mm !important;
+                height: 297mm !important;
+                max-width: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                page-break-after: always;
+                break-after: page;
+            }
+            .no-print {
+                display: none !important;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+        }
+
+        /* Cut Line Styles */
+        .cut-line-dashed {
+            border: 1px dashed #cbd5e1;
+        }
+        
+        .cut-line-dashed::before {
+            content: '✂';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #94a3b8;
+            background: white;
+            padding: 0 4px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Navigation Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-brand-600 text-white p-2 rounded-lg flex items-center justify-center w-10 h-10 shadow-sm">
+                    <i class="fa-solid fa-receipt text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">发票智拼 - 电子发票自动拼版工具</h1>
+                    <p class="text-xs text-slate-500">智能排版 · 自动汇总 · 一键贴票打印</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="loadDemoData()" class="px-3 py-1.5 text-xs font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-md transition-colors flex items-center gap-1.5">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> 载入示例数据
+                </button>
+                <button onclick="clearAllData()" class="px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-md transition-colors flex items-center gap-1.5">
+                    <i class="fa-regular fa-trash-can"></i> 清空
+                </button>
+                <button onclick="triggerPrint()" class="px-4 py-2 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i> 立即打印 (A4)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Layout -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 no-print">
+
+        <!-- Left Sidebar: Controls & Upload (5 Cols) -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+
+            <!-- File Upload Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <h2 class="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-cloud-arrow-up text-brand-600"></i> 上传电子发票
+                </h2>
+                
+                <!-- Dropzone -->
+                <div id="dropzone" onclick="document.getElementById('fileInput').click()" 
+                     class="border-2 border-dashed border-slate-300 hover:border-brand-500 bg-slate-50/50 hover:bg-brand-50/30 rounded-xl p-6 text-center cursor-pointer transition-all">
+                    <input type="file" id="fileInput" multiple accept="image/png, image/jpeg, image/jpg, application/pdf" class="hidden" onchange="handleFileSelect(event)">
+                    <div class="w-12 h-12 bg-white rounded-full shadow-sm border border-slate-200 flex items-center justify-center mx-auto mb-3 text-brand-600">
+                        <i class="fa-solid fa-file-invoice-dollar text-2xl"></i>
+                    </div>
+                    <p class="text-sm font-medium text-slate-700">点击上传 或 将发票文件拖拽至此处</p>
+                    <p class="text-xs text-slate-400 mt-1">支持 PDF、PNG、JPG 格式电子发票</p>
+                </div>
+
+                <!-- Invoice File List -->
+                <div class="mt-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">已添加发票 (<span id="invoice-count">0</span>)</span>
+                        <span class="text-xs text-slate-400">可拖拽调整页面拼版顺序</span>
+                    </div>
+                    <div id="invoice-list" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        <!-- Invoice Items Rendered Dynamically -->
+                        <div id="empty-state" class="text-center py-6 text-slate-400 text-xs">
+                            暂未上传任何发票
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Print Settings Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <h2 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-brand-600"></i> 拼版排版设置
+                </h2>
+
+                <div class="space-y-4 text-sm">
+                    <!-- Layout Mode Selector -->
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-2">每页发票拼版张数</label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button type="button" onclick="setLayout(1)" id="btn-layout-1" class="layout-btn p-2.5 border border-slate-200 rounded-lg text-center hover:border-brand-500 transition-all">
+                                <div class="w-6 h-8 border border-slate-300 rounded mx-auto mb-1 flex items-center justify-center text-xs bg-slate-50">1</div>
+                                <span class="text-xs text-slate-600 font-medium">1 张/页</span>
+                            </button>
+                            <button type="button" onclick="setLayout(2)" id="btn-layout-2" class="layout-btn p-2.5 border-2 border-brand-600 bg-brand-50/50 rounded-lg text-center font-medium transition-all">
+                                <div class="w-6 h-8 border border-slate-300 rounded mx-auto mb-1 flex flex-col justify-between p-0.5 bg-slate-50">
+                                    <div class="h-[10px] bg-brand-200 rounded-xs"></div>
+                                    <div class="h-[10px] bg-brand-200 rounded-xs"></div>
+                                </div>
+                                <span class="text-xs text-brand-700 font-bold">2 张/页</span>
+                            </button>
+                            <button type="button" onclick="setLayout(3)" id="btn-layout-3" class="layout-btn p-2.5 border border-slate-200 rounded-lg text-center hover:border-brand-500 transition-all">
+                                <div class="w-6 h-8 border border-slate-300 rounded mx-auto mb-1 flex flex-col justify-between p-0.5 bg-slate-50">
+                                    <div class="h-[6px] bg-slate-300 rounded-xs"></div>
+                                    <div class="h-[6px] bg-slate-300 rounded-xs"></div>
+                                    <div class="h-[6px] bg-slate-300 rounded-xs"></div>
+                                </div>
+                                <span class="text-xs text-slate-600 font-medium">3 张/页</span>
+                            </button>
+                            <button type="button" onclick="setLayout(4)" id="btn-layout-4" class="layout-btn p-2.5 border border-slate-200 rounded-lg text-center hover:border-brand-500 transition-all">
+                                <div class="w-6 h-8 border border-slate-300 rounded mx-auto mb-1 grid grid-cols-2 gap-0.5 p-0.5 bg-slate-50">
+                                    <div class="bg-slate-300 rounded-xs"></div>
+                                    <div class="bg-slate-300 rounded-xs"></div>
+                                    <div class="bg-slate-300 rounded-xs"></div>
+                                    <div class="bg-slate-300 rounded-xs"></div>
+                                </div>
+                                <span class="text-xs text-slate-600 font-medium">4 张/页</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Layout Detail Options -->
+                    <div class="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">纸张页边距 (mm)</label>
+                            <input type="range" id="margin-input" min="5" max="25" value="10" oninput="updateSettings()" class="w-full accent-brand-600">
+                            <div class="flex justify-between text-xs text-slate-400">
+                                <span>5mm</span>
+                                <span id="margin-val" class="font-bold text-slate-700">10mm</span>
+                                <span>25mm</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">发票卡片间距 (mm)</label>
+                            <input type="range" id="gap-input" min="2" max="20" value="8" oninput="updateSettings()" class="w-full accent-brand-600">
+                            <div class="flex justify-between text-xs text-slate-400">
+                                <span>2mm</span>
+                                <span id="gap-val" class="font-bold text-slate-700">8mm</span>
+                                <span>20mm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Toggle Options -->
+                    <div class="space-y-2 pt-2 border-t border-slate-100">
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="text-xs font-medium text-slate-700">显示剪切虚线 (便于裁剪贴票)</span>
+                            <input type="checkbox" id="show-cutlines" checked onchange="updateSettings()" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="text-xs font-medium text-slate-700">显示报销贴票引导边框</span>
+                            <input type="checkbox" id="show-border" checked onchange="updateSettings()" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="text-xs font-medium text-slate-700">在底部附带贴票报销汇总表格</span>
+                            <input type="checkbox" id="show-summary" checked onchange="updateSettings()" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expense Summary Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-brand-600"></i> 报销金额统计
+                    </h2>
+                    <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium border border-emerald-200">自动汇总</span>
+                </div>
+                
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-slate-500">发票总张数</p>
+                        <p class="text-lg font-bold text-slate-800" id="total-count-display">0 张</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-slate-500">报销合计总金额</p>
+                        <p class="text-2xl font-extrabold text-brand-600" id="total-amount-display">¥ 0.00</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Main: A4 Canvas Live Preview (7 Cols) -->
+        <div class="lg:col-span-7 flex flex-col">
+            <!-- Preview Controls Header -->
+            <div class="bg-white rounded-t-xl border border-slate-200 p-4 flex items-center justify-between border-b-0">
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-eye text-brand-600"></i> A4 纸张实时打印预览
+                    </span>
+                    <span id="page-count-badge" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">第 1 / 1 页</span>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <!-- Page Navigation -->
+                    <button onclick="prevPreviewPage()" id="btn-prev-page" class="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <span id="page-indicator" class="text-xs font-medium text-slate-600">1</span>
+                    <button onclick="nextPreviewPage()" id="btn-next-page" class="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Viewport -->
+            <div class="bg-slate-200/70 border border-slate-200 rounded-b-xl p-6 min-h-[880px] flex items-center justify-center overflow-auto">
+                
+                <!-- A4 Paper Rendering Canvas Container -->
+                <div id="a4-canvas" class="a4-page p-6 flex flex-col justify-between relative bg-white transition-all">
+                    <!-- Dynamic dynamic content injected by JS -->
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Hidden Print Target (Duplicated and synchronized for @media print) -->
+    <div id="print-area" class="hidden"></div>
+
+    <script>
+        // PDF.js worker setup
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Global State
+        let invoices = []; // List of uploaded invoices
+        let settings = {
+            perPage: 2,
+            margin: 10,
+            gap: 8,
+            showCutLines: true,
+            showBorder: true,
+            showSummary: true
+        };
+        let currentPreviewPage = 1;
+
+        // Initialize Sortable for Draggable List
+        document.addEventListener('DOMContentLoaded', () => {
+            const el = document.getElementById('invoice-list');
+            Sortable.create(el, {
+                animation: 150,
+                handle: '.drag-handle',
+                onEnd: function (evt) {
+                    const movedItem = invoices.splice(evt.oldIndex, 1)[0];
+                    invoices.splice(evt.newIndex, 0, movedItem);
+                    renderAll();
+                }
+            });
+            renderAll();
+        });
+
+        // Set Layout Mode
+        function setLayout(num) {
+            settings.perPage = num;
+            // Update UI buttons
+            [1, 2, 3, 4].forEach(n => {
+                const btn = document.getElementById(`btn-layout-${n}`);
+                if (n === num) {
+                    btn.className = "layout-btn p-2.5 border-2 border-brand-600 bg-brand-50/50 rounded-lg text-center font-medium transition-all";
+                    btn.querySelector('span').className = "text-xs text-brand-700 font-bold";
+                } else {
+                    btn.className = "layout-btn p-2.5 border border-slate-200 rounded-lg text-center hover:border-brand-500 transition-all";
+                    btn.querySelector('span').className = "text-xs text-slate-600 font-medium";
+                }
+            });
+            currentPreviewPage = 1;
+            renderAll();
+        }
+
+        // Update Settings Range/Toggles
+        function updateSettings() {
+            settings.margin = parseInt(document.getElementById('margin-input').value);
+            settings.gap = parseInt(document.getElementById('gap-input').value);
+            settings.showCutLines = document.getElementById('show-cutlines').checked;
+            settings.showBorder = document.getElementById('show-border').checked;
+            settings.showSummary = document.getElementById('show-summary').checked;
+
+            document.getElementById('margin-val').innerText = settings.margin + 'mm';
+            document.getElementById('gap-val').innerText = settings.gap + 'mm';
+
+            renderAll();
+        }
+
+        // Handle File Selection (Upload)
+        async function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            if (!files.length) return;
+
+            for (let file of files) {
+                await processFile(file);
+            }
+            renderAll();
+        }
+
+        // Drag & Drop Handlers
+        const dropzone = document.getElementById('dropzone');
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('border-brand-500', 'bg-brand-50/50');
+        });
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('border-brand-500', 'bg-brand-50/50');
+        });
+        dropzone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-brand-500', 'bg-brand-50/50');
+            const files = Array.from(e.dataTransfer.files);
+            for (let file of files) {
+                await processFile(file);
+            }
+            renderAll();
+        });
+
+        // Process File (Image or PDF)
+        async function processFile(file) {
+            const id = 'inv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            const isPdf = file.type === 'application/pdf';
+
+            if (isPdf) {
+                const previewUrl = await renderPdfToImage(file);
+                invoices.push({
+                    id,
+                    name: file.name,
+                    amount: Math.floor(Math.random() * 300) + 50.50, // Mock initial amount
+                    type: '餐饮服务/通用发票',
+                    previewUrl,
+                    fileType: 'pdf'
+                });
+            } else if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                await new Promise((resolve) => {
+                    reader.onload = (e) => {
+                        invoices.push({
+                            id,
+                            name: file.name,
+                            amount: Math.floor(Math.random() * 200) + 30.00,
+                            type: '交通接送/差旅费',
+                            previewUrl: e.target.result,
+                            fileType: 'image'
+                        });
+                        resolve();
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+
+        // Render PDF First Page to Image Data URL using PDF.js
+        async function renderPdfToImage(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const page = await pdf.getPage(1);
+                
+                const viewport = page.getViewport({ scale: 1.5 });
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                return canvas.toDataURL('image/png');
+            } catch (err) {
+                console.error("PDF Parsing Error: ", err);
+                // Fallback SVG placeholder for PDF
+                return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250" fill="%23f8fafc"><rect width="100%" height="100%" stroke="%23cbd5e1" stroke-width="2"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16" fill="%2364748b">电子发票 (PDF 演示)</text></svg>`;
+            }
+        }
+
+        // Load Demo Data for Instant Testing
+        function loadDemoData() {
+            invoices = [
+                {
+                    id: 'demo-1',
+                    name: '上海打车行程发票.png',
+                    amount: 128.50,
+                    type: '市内交通费',
+                    previewUrl: createMockInvoiceSVG('滴滴出行电子行程发票', '128.50', '2026-09-12'),
+                    fileType: 'image'
+                },
+                {
+                    id: 'demo-2',
+                    name: '团队商务餐饮发票.pdf',
+                    amount: 468.00,
+                    type: '餐饮服务费',
+                    previewUrl: createMockInvoiceSVG('餐饮服务电子发票', '468.00', '2026-09-15'),
+                    fileType: 'pdf'
+                },
+                {
+                    id: 'demo-3',
+                    name: '出差酒店住宿发票.jpg',
+                    amount: 350.00,
+                    type: '住宿服务费',
+                    previewUrl: createMockInvoiceSVG('全季酒店住宿电子发票', '350.00', '2026-09-18'),
+                    fileType: 'image'
+                },
+                {
+                    id: 'demo-4',
+                    name: '办公文具采购发票.pdf',
+                    amount: 89.90,
+                    type: '办公用品',
+                    previewUrl: createMockInvoiceSVG('办公用品采购电子发票', '89.90', '2026-09-20'),
+                    fileType: 'pdf'
+                }
+            ];
+            currentPreviewPage = 1;
+            renderAll();
+        }
+
+        // Create clean SVG data URL for demo invoices
+        function createMockInvoiceSVG(title, amount, date) {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380">
+                <rect width="600" height="380" fill="#ffffff" stroke="#3b82f6" stroke-width="4" rx="8"/>
+                <rect x="20" y="20" width="560" height="340" fill="#fafafa" stroke="#e2e8f0" stroke-width="1"/>
+                <text x="300" y="65" font-family="sans-serif" font-size="22" font-weight="bold" fill="#1e293b" text-anchor="middle">全面数字化的电子发票</text>
+                <line x1="150" y1="80" x2="450" y2="80" stroke="#3b82f6" stroke-width="2"/>
+                <text x="50" y="120" font-family="sans-serif" font-size="14" fill="#64748b">开票日期: ${date}</text>
+                <text x="50" y="150" font-family="sans-serif" font-size="16" font-weight="bold" fill="#334155">项目名称: ${title}</text>
+                <rect x="50" y="180" width="500" height="100" fill="#eff6ff" rx="6" stroke="#bfdbfe" stroke-width="1"/>
+                <text x="70" y="220" font-family="sans-serif" font-size="15" fill="#1e40af">价税合计 (小写):</text>
+                <text x="70" y="255" font-family="sans-serif" font-size="28" font-weight="bold" fill="#2563eb">¥ ${amount}</text>
+                <text x="400" y="320" font-family="sans-serif" font-size="12" fill="#94a3b8">盖章位置：(电子发票章)</text>
+                <circle cx="480" cy="300" r="35" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="4,2"/>
+            </svg>`;
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        }
+
+        // Delete Invoice
+        function deleteInvoice(id) {
+            invoices = invoices.filter(inv => inv.id !== id);
+            renderAll();
+        }
+
+        // Update Amount
+        function updateAmount(id, val) {
+            const inv = invoices.find(i => i.id === id);
+            if (inv) {
+                inv.amount = parseFloat(val) || 0;
+                renderTotals();
+                renderPreview();
+            }
+        }
+
+        // Clear All
+        function clearAllData() {
+            invoices = [];
+            currentPreviewPage = 1;
+            renderAll();
+        }
+
+        // Render Everything
+        function renderAll() {
+            renderInvoiceList();
+            renderTotals();
+            renderPreview();
+        }
+
+        // Render Left File List
+        function renderInvoiceList() {
+            const container = document.getElementById('invoice-list');
+            document.getElementById('invoice-count').innerText = invoices.length;
+
+            if (invoices.length === 0) {
+                container.innerHTML = `
+                    <div id="empty-state" class="text-center py-6 text-slate-400 text-xs">
+                        <i class="fa-regular fa-folder-open text-2xl mb-2 block"></i>
+                        暂未上传任何发票
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = invoices.map((inv) => `
+                <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg hover:border-brand-300 transition-all text-xs" data-id="${inv.id}">
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <i class="fa-solid fa-grip-vertical text-slate-300 drag-handle cursor-grab hover:text-slate-500"></i>
+                        <img src="${inv.previewUrl}" class="w-10 h-7 object-cover border border-slate-200 rounded bg-white flex-shrink-0">
+                        <div class="truncate max-w-[140px]">
+                            <p class="font-medium text-slate-800 truncate" title="${inv.name}">${inv.name}</p>
+                            <span class="text-[10px] text-slate-400 uppercase">${inv.fileType}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="flex items-center bg-white border border-slate-200 rounded px-1.5 py-0.5">
+                            <span class="text-slate-400 mr-1">¥</span>
+                            <input type="number" step="0.01" value="${inv.amount}" onchange="updateAmount('${inv.id}', this.value)" 
+                                class="w-16 text-right font-semibold text-slate-700 bg-transparent focus:outline-none">
+                        </div>
+                        <button onclick="deleteInvoice('${inv.id}')" class="text-slate-400 hover:text-rose-500 p-1">
+                            <i class="fa-regular fa-trash-can text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render Summary Totals
+        function renderTotals() {
+            const total = invoices.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            document.getElementById('total-count-display').innerText = `${invoices.length} 张`;
+            document.getElementById('total-amount-display').innerText = `¥ ${total.toFixed(2)}`;
+        }
+
+        // Page Navigation
+        function prevPreviewPage() {
+            if (currentPreviewPage > 1) {
+                currentPreviewPage--;
+                renderPreview();
+            }
+        }
+
+        function nextPreviewPage() {
+            const totalPages = Math.ceil(invoices.length / settings.perPage) || 1;
+            if (currentPreviewPage < totalPages) {
+                currentPreviewPage++;
+                renderPreview();
+            }
+        }
+
+        // Render A4 Preview Canvas
+        function renderPreview() {
+            const canvas = document.getElementById('a4-canvas');
+            const totalPages = Math.ceil(invoices.length / settings.perPage) || 1;
+
+            if (currentPreviewPage > totalPages) currentPreviewPage = totalPages;
+
+            // Page Badges
+            document.getElementById('page-count-badge').innerText = `第 ${currentPreviewPage} / ${totalPages} 页`;
+            document.getElementById('page-indicator').innerText = `${currentPreviewPage} / ${totalPages}`;
+            document.getElementById('btn-prev-page').disabled = currentPreviewPage === 1;
+            document.getElementById('btn-next-page').disabled = currentPreviewPage === totalPages;
+
+            if (invoices.length === 0) {
+                canvas.style.padding = `${settings.margin}mm`;
+                canvas.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-200 rounded-xl">
+                        <i class="fa-solid fa-print text-5xl mb-3"></i>
+                        <p class="text-base font-medium text-slate-400">A4 页面拼版预览区</p>
+                        <p class="text-xs text-slate-400 mt-1">请上传发票或点击“载入示例数据”</p>
+                    </div>`;
+                return;
+            }
+
+            // Get current page slice of invoices
+            const startIdx = (currentPreviewPage - 1) * settings.perPage;
+            const pageInvoices = invoices.slice(startIdx, startIdx + settings.perPage);
+
+            // Compute layout styles
+            let gridCss = '';
+            if (settings.perPage === 1) gridCss = 'grid-cols-1 grid-rows-1';
+            else if (settings.perPage === 2) gridCss = 'grid-cols-1 grid-rows-2';
+            else if (settings.perPage === 3) gridCss = 'grid-cols-1 grid-rows-3';
+            else if (settings.perPage === 4) gridCss = 'grid-cols-2 grid-rows-2';
+
+            const invoiceCardsHtml = pageInvoices.map((inv, idx) => {
+                const showCut = settings.showCutLines ? 'cut-line-dashed' : '';
+                const borderClass = settings.showBorder ? 'border border-slate-200 shadow-xs' : '';
+                return `
+                    <div class="relative flex flex-col justify-between p-3 rounded-md bg-white ${borderClass} ${showCut} overflow-hidden group">
+                        <div class="w-full h-full flex items-center justify-center overflow-hidden">
+                            <img src="${inv.previewUrl}" class="max-w-full max-h-full object-contain">
+                        </div>
+                        <div class="mt-1 pt-1 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-500">
+                            <span>发票号/序号: #${startIdx + idx + 1}</span>
+                            <span class="font-bold text-slate-700">金额: ¥${inv.amount.toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Optional Reimbursement Summary Slip at bottom
+            let summarySlipHtml = '';
+            if (settings.showSummary) {
+                const pageTotal = pageInvoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+                summarySlipHtml = `
+                    <div class="mt-4 pt-3 border-t-2 border-slate-800 text-xs">
+                        <div class="flex justify-between font-bold text-slate-800 mb-1">
+                            <span>【报销贴票存根明细】</span>
+                            <span>本页合计张数：${pageInvoices.length} 张</span>
+                        </div>
+                        <table class="w-full border-collapse border border-slate-300 text-[10px] text-left">
+                            <thead class="bg-slate-100">
+                                <tr>
+                                    <th class="border border-slate-300 px-2 py-1">序号</th>
+                                    <th class="border border-slate-300 px-2 py-1">发票名称/用途</th>
+                                    <th class="border border-slate-300 px-2 py-1 text-right">金额 (元)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${pageInvoices.map((inv, i) => `
+                                    <tr>
+                                        <td class="border border-slate-300 px-2 py-0.5">${i + 1}</td>
+                                        <td class="border border-slate-300 px-2 py-0.5">${inv.name}</td>
+                                        <td class="border border-slate-300 px-2 py-0.5 text-right font-medium">¥${inv.amount.toFixed(2)}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="bg-slate-50 font-bold">
+                                    <td colspan="2" class="border border-slate-300 px-2 py-1 text-right">本页发票小计：</td>
+                                    <td class="border border-slate-300 px-2 py-1 text-right text-brand-700">¥${pageTotal.toFixed(2)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+
+            // Apply margin and gaps dynamically
+            canvas.style.padding = `${settings.margin}mm`;
+            canvas.innerHTML = `
+                <div class="flex-1 grid ${gridCss}" style="gap: ${settings.gap}mm;">
+                    ${invoiceCardsHtml}
+                </div>
+                ${summarySlipHtml}
+            `;
+        }
+
+        // Trigger Print Execution
+        function triggerPrint() {
+            if (invoices.length === 0) {
+                alert('请先上传发票或使用示例数据再执行打印！');
+                return;
+            }
+
+            const printContainer = document.getElementById('print-area');
+            printContainer.innerHTML = '';
+
+            const totalPages = Math.ceil(invoices.length / settings.perPage);
+
+            // Generate layout HTML for all pages
+            for (let page = 1; page <= totalPages; page++) {
+                const startIdx = (page - 1) * settings.perPage;
+                const pageInvoices = invoices.slice(startIdx, startIdx + settings.perPage);
+
+                let gridCss = '';
+                if (settings.perPage === 1) gridCss = 'grid-cols-1 grid-rows-1';
+                else if (settings.perPage === 2) gridCss = 'grid-cols-1 grid-rows-2';
+                else if (settings.perPage === 3) gridCss = 'grid-cols-1 grid-rows-3';
+                else if (settings.perPage === 4) gridCss = 'grid-cols-2 grid-rows-2';
+
+                const invoiceCardsHtml = pageInvoices.map((inv, idx) => {
+                    const showCut = settings.showCutLines ? 'cut-line-dashed' : '';
+                    const borderClass = settings.showBorder ? 'border border-slate-300' : '';
+                    return `
+                        <div class="relative flex flex-col justify-between p-3 bg-white ${borderClass} ${showCut} overflow-hidden">
+                            <div class="w-full h-full flex items-center justify-center overflow-hidden">
+                                <img src="${inv.previewUrl}" class="max-w-full max-h-full object-contain">
+                            </div>
+                            <div class="mt-1 pt-1 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-600">
+                                <span>序号: #${startIdx + idx + 1}</span>
+                                <span class="font-bold">金额: ¥${inv.amount.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                let summarySlipHtml = '';
+                if (settings.showSummary) {
+                    const pageTotal = pageInvoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+                    summarySlipHtml = `
+                        <div class="mt-4 pt-2 border-t-2 border-slate-800 text-[10px]">
+                            <div class="flex justify-between font-bold mb-1">
+                                <span>【报销贴票存根明细】</span>
+                                <span>本页张数：${pageInvoices.length} 张</span>
+                            </div>
+                            <table class="w-full border-collapse border border-slate-300 text-left">
+                                <thead class="bg-slate-100">
+                                    <tr>
+                                        <th class="border border-slate-300 px-2 py-0.5">序号</th>
+                                        <th class="border border-slate-300 px-2 py-0.5">发票名称/用途</th>
+                                        <th class="border border-slate-300 px-2 py-0.5 text-right">金额 (元)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${pageInvoices.map((inv, i) => `
+                                        <tr>
+                                            <td class="border border-slate-300 px-2 py-0.5">${i + 1}</td>
+                                            <td class="border border-slate-300 px-2 py-0.5">${inv.name}</td>
+                                            <td class="border border-slate-300 px-2 py-0.5 text-right font-medium">¥${inv.amount.toFixed(2)}</td>
+                                        </tr>
+                                    `).join('')}
+                                    <tr class="font-bold bg-slate-50">
+                                        <td colspan="2" class="border border-slate-300 px-2 py-0.5 text-right">小计：</td>
+                                        <td class="border border-slate-300 px-2 py-0.5 text-right">¥${pageTotal.toFixed(2)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                const pageElem = document.createElement('div');
+                pageElem.className = 'a4-page flex flex-col justify-between bg-white';
+                pageElem.style.padding = `${settings.margin}mm`;
+                pageElem.innerHTML = `
+                    <div class="flex-1 grid ${gridCss}" style="gap: ${settings.gap}mm;">
+                        ${invoiceCardsHtml}
+                    </div>
+                    ${summarySlipHtml}
+                `;
+                printContainer.appendChild(pageElem);
+            }
+
+            // Call window.print
+            setTimeout(() => {
+                window.print();
+            }, 150);
+        }
+    </script>
+</body>
+</html>

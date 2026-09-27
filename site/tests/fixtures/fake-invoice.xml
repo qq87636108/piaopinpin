@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EInvoice>
+  <Header><EInvoiceType><LabelCode>01</LabelCode><LabelName>数电票（普通发票）</LabelName></EInvoiceType></Header>
+  <Data>
+    <InvoiceNumber>245120000000987654</InvoiceNumber>
+    <IssueTime>2026-09-20</IssueTime>
+    <BuyerName>示例科技有限公司</BuyerName>
+    <SellerName>示例云计算服务有限公司</SellerName>
+    <TotalTaxWithAmount>叁佰陆拾元整（小写）360.00</TotalTaxWithAmount>
+  </Data>
+</EInvoice>
