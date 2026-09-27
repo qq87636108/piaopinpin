@@ -144,6 +144,15 @@ piaopinpin/
 
 本项目基于 [MIT License](LICENSE) 开源。
 
+## 📚 技术文档
+
+详细的技术实现文档请查看：[技术文档](docs/技术文档.md)
+
+- 架构设计
+- 核心功能实现（PDF/OFD 解析、智能裁边、排版引擎）
+- 已知问题与解决方案
+- 开发指南
+
 ## 🔗 相关链接
 
 - [PDF.js](https://mozilla.github.io/pdf.js/) - PDF 解析引擎
