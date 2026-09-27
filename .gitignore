@@ -7,3 +7,17 @@ ads-config.js
 *.db
 *.sqlite
 .env
+
+# 内部文档（不公开）
+attachments/
+docs/01-*.md
+docs/02-*.md
+docs/03-*.md
+docs/04-*.md
+
+# 测试文件
+site/tests/
+
+# 交接文档
+交接档案.md
+发布前复盘报告.md
